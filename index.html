@@ -509,9 +509,48 @@
             }
         };
 
+        // Replace your current onAuthStateChanged with this:
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                idToken = await user.getIdToken();
+                try {
+                    idToken = await user.getIdToken();
+                    
+                    // Send token to backend to get user data
+                    const response = await fetch(`${API_BASE}/auth/google`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${idToken}`
+                        }
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        currentUser = data.user_id;
+                        currentUserEmail = user.email;
+                        
+                        if (data.is_admin) {
+                            loadAdminPanel();
+                        } else {
+                            document.getElementById('userPoints').textContent = data.points;
+                            document.getElementById('userEmail').textContent = user.email;
+                            showScreen('vendingScreen');
+                        }
+                    } else {
+                        // If backend fails, still show login screen
+                        showScreen('loginScreen');
+                    }
+                } catch (error) {
+                    console.error('Session restore error:', error);
+                    showScreen('loginScreen');
+                }
+            } else {
+                // User is signed out
+                currentUser = null;
+                currentUserEmail = null;
+                idToken = null;
+                showScreen('loginScreen');
             }
         });
 
