@@ -137,6 +137,7 @@
             box-shadow: 0 4px 0 #2d8b83;
             position: relative;
             top: 0;
+            width: 100%;
         }
         
         .button:hover {
@@ -159,6 +160,22 @@
             background: linear-gradient(145deg, #ff6b6b, #ee5a52);
             border-color: #c44040;
             box-shadow: 0 4px 0 #c44040;
+        }
+
+        .button.google {
+            background: white;
+            color: #444;
+            border-color: #ddd;
+            box-shadow: 0 4px 0 #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 9px;
+        }
+
+        .button.google:hover {
+            background: #f8f8f8;
         }
         
         .button-group {
@@ -187,6 +204,13 @@
             color: #4ecdc4;
             font-size: 20px;
             text-shadow: 0 0 10px #4ecdc4;
+        }
+
+        .user-email {
+            color: #7b68ee;
+            font-size: 7px;
+            margin-top: 5px;
+            word-break: break-all;
         }
         
         .slots-grid {
@@ -224,20 +248,6 @@
             font-size: 10px;
         }
         
-        .admin-link {
-            text-align: center;
-            margin-top: 20px;
-            color: #7b68ee;
-            font-size: 8px;
-            cursor: pointer;
-            text-decoration: underline;
-            transition: color 0.3s;
-        }
-        
-        .admin-link:hover {
-            color: #9b88ff;
-        }
-        
         .user-list {
             max-height: 300px;
             overflow-y: auto;
@@ -261,8 +271,9 @@
         
         .user-id {
             color: #ffe66d;
-            font-size: 10px;
+            font-size: 8px;
             margin-bottom: 5px;
+            word-break: break-all;
         }
         
         .user-points {
@@ -273,11 +284,13 @@
         .user-actions {
             display: flex;
             gap: 5px;
+            flex-wrap: wrap;
         }
         
         .small-button {
             padding: 8px 12px;
             font-size: 8px;
+            width: auto;
         }
         
         .error {
@@ -334,23 +347,32 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #5a6693;
         }
+
+        .login-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
     </style>
 </head>
 <body>
     <div class="vending-machine">
         <div class="screen">
-            <!-- ID Entry Screen -->
-            <div id="idScreen">
+            <!-- Login Screen -->
+            <div id="loginScreen">
                 <h1 class="title">VendoMatic 3000</h1>
-                <div class="input-group">
-                    <label for="userId">Enter User ID:</label>
-                    <input type="text" id="userId" placeholder="USER_ID">
+                <div class="login-container">
+                    <button class="button google" onclick="signInWithGoogle()">
+                        <svg width="18" height="18" viewBox="0 0 18 18">
+                            <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+                            <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+                            <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707 0-.593.102-1.17.282-1.709V4.958H.957C.347 6.173 0 7.548 0 9c0 1.452.348 2.827.957 4.042l3.007-2.335z"/>
+                            <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+                        </svg>
+                        Sign in with Google
+                    </button>
                 </div>
-                <div class="button-group">
-                    <button class="button" onclick="enterUser()">Enter</button>
-                </div>
-                <div class="admin-link" onclick="showAdminLogin()">Admin Login</div>
-                <div id="idError"></div>
+                <div id="loginError"></div>
             </div>
 
             <!-- Main Vending Screen -->
@@ -359,6 +381,7 @@
                 <div class="points-display">
                     <div class="points-label">Your Points</div>
                     <div class="points-value" id="userPoints">0</div>
+                    <div class="user-email" id="userEmail"></div>
                 </div>
                 <div class="slots-grid">
                     <div class="slot" onclick="buyItem('A1', 10)">
@@ -376,26 +399,8 @@
                 </div>
                 <div id="vendingMessage"></div>
                 <div class="button-group">
-                    <button class="button secondary" onclick="showIdScreen()">Logout</button>
+                    <button class="button secondary" onclick="signOut()">Logout</button>
                 </div>
-            </div>
-
-            <!-- Admin Login Screen -->
-            <div id="adminLoginScreen" class="hidden">
-                <h1 class="title">Admin Access</h1>
-                <div class="input-group">
-                    <label for="adminUsername">Username:</label>
-                    <input type="text" id="adminUsername" placeholder="admin">
-                </div>
-                <div class="input-group">
-                    <label for="adminPassword">Password:</label>
-                    <input type="password" id="adminPassword" placeholder="password">
-                </div>
-                <div class="button-group">
-                    <button class="button" onclick="adminLogin()">Login</button>
-                    <button class="button secondary" onclick="showIdScreen()">Back</button>
-                </div>
-                <div id="adminError"></div>
             </div>
 
             <!-- Admin Panel -->
@@ -421,44 +426,100 @@
                     <div id="adminDispenseMessage"></div>
                 </div>
 
-                <div style="margin-bottom: 20px; background: linear-gradient(145deg, #2d3561, #1a1f3a); border: 3px solid #4a5683; border-radius: 8px; padding: 15px;">
-                    <label style="color: #ffe66d; font-size: 10px; display: block; margin-bottom: 10px;">Create New User:</label>
-                    <div class="input-group" style="margin-bottom: 10px;">
-                        <input type="text" id="newUserId" placeholder="Enter new user ID" style="margin-bottom: 0;">
-                    </div>
-                    <button class="button" onclick="createNewUser()" style="width: 100%;">Create User</button>
-                    <div id="createUserMessage"></div>
-                </div>
-
                 <label style="color: #ffe66d; font-size: 10px; display: block; margin-bottom: 10px;">User Management:</label>
                 <div class="user-list" id="userList"></div>
                 <div class="button-group">
-                    <button class="button secondary" onclick="showIdScreen()">Logout</button>
+                    <button class="button secondary" onclick="signOut()">Logout</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
-        const API_BASE = 'https://backend-vendomatic-3000.onrender.com';
-        let currentUser = null;
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
+        // TODO: Replace with your Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAc092YhusGKgqVnlUDGp6Cs-ShQteVZ1o",
+    authDomain: "lueken-s-vending-machine.firebaseapp.com",
+    projectId: "lueken-s-vending-machine",
+    storageBucket: "lueken-s-vending-machine.firebasestorage.app",
+    messagingSenderId: "252754856690",
+    appId: "1:252754856690:web:320e7a25c6f935588f5e6b",
+    measurementId: "G-KKN4C9V93Y"
+  };
+
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        const API_BASE = 'http://localhost:8000';
+        let currentUser = null;
+        let currentUserEmail = null;
+        let idToken = null;
+
+        window.signInWithGoogle = async function() {
+            try {
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+                idToken = await user.getIdToken();
+                
+                // Send token to backend
+                const response = await fetch(`${API_BASE}/auth/google`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentUser = data.user_id;
+                    currentUserEmail = user.email;
+                    
+                    if (data.is_admin) {
+                        loadAdminPanel();
+                    } else {
+                        document.getElementById('userPoints').textContent = data.points;
+                        document.getElementById('userEmail').textContent = user.email;
+                        showScreen('vendingScreen');
+                    }
+                } else {
+                    showMessage('loginError', data.error || 'Login failed', true);
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showMessage('loginError', 'Login failed', true);
+            }
+        };
+
+        window.signOut = async function() {
+            try {
+                await firebaseSignOut(auth);
+                currentUser = null;
+                currentUserEmail = null;
+                idToken = null;
+                showScreen('loginScreen');
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                idToken = await user.getIdToken();
+            }
+        });
 
         function showScreen(screenId) {
             document.querySelectorAll('.screen > div').forEach(div => {
                 div.classList.add('hidden');
             });
             document.getElementById(screenId).classList.remove('hidden');
-        }
-
-        function showIdScreen() {
-            currentUser = null;
-            document.getElementById('userId').value = '';
-            showScreen('idScreen');
-        }
-
-        function showAdminLogin() {
-            showScreen('adminLoginScreen');
         }
 
         function showMessage(elementId, message, isError = false) {
@@ -469,37 +530,15 @@
             }, 3000);
         }
 
-        async function enterUser() {
-            const userId = document.getElementById('userId').value.trim();
-            if (!userId) {
-                showMessage('idError', 'Please enter a user ID', true);
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE}/user/${userId}`);
-                if (!response.ok) {
-                    showMessage('idError', 'User not found', true);
-                    return;
-                }
-
-                const data = await response.json();
-                currentUser = data.user_id;
-                document.getElementById('userPoints').textContent = data.points;
-                showScreen('vendingScreen');
-            } catch (error) {
-                showMessage('idError', 'Connection error', true);
-            }
-        }
-
-        async function buyItem(itemName, cost) {
-            if (!currentUser) return;
+        window.buyItem = async function(itemName, cost) {
+            if (!currentUser || !idToken) return;
 
             try {
                 const response = await fetch(`${API_BASE}/buy`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`
                     },
                     body: JSON.stringify({
                         user_id: currentUser,
@@ -520,43 +559,23 @@
             } catch (error) {
                 showMessage('vendingMessage', 'Connection error', true);
             }
-        }
+        };
 
-        async function adminLogin() {
-            const username = document.getElementById('adminUsername').value;
-            const password = document.getElementById('adminPassword').value;
+        window.loadAdminPanel = async function() {
+            if (!idToken) return;
 
             try {
-                const response = await fetch(`${API_BASE}/admin/login`, {
-                    method: 'POST',
+                const response = await fetch(`${API_BASE}/users`, {
                     headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        username: username,
-                        password: password
-                    })
+                        'Authorization': `Bearer ${idToken}`
+                    }
                 });
-
-                if (response.ok) {
-                    loadAdminPanel();
-                } else {
-                    showMessage('adminError', 'Invalid credentials', true);
-                }
-            } catch (error) {
-                showMessage('adminError', 'Connection error', true);
-            }
-        }
-
-        async function loadAdminPanel() {
-            try {
-                const response = await fetch(`${API_BASE}/users`);
                 const users = await response.json();
 
                 const userListHtml = users.map(user => `
                     <div class="user-item">
                         <div class="user-info">
-                            <div class="user-id">ID: ${user.user_id}</div>
+                            <div class="user-id">${user.email || user.user_id}</div>
                             <div class="user-points">${user.points} pts</div>
                         </div>
                         <div class="user-actions">
@@ -569,33 +588,35 @@
                 document.getElementById('userList').innerHTML = userListHtml;
                 showScreen('adminPanel');
             } catch (error) {
-                showMessage('adminError', 'Failed to load users', true);
+                showMessage('loginError', 'Failed to load admin panel', true);
             }
-        }
+        };
 
-        async function adjustPoints(userId, adjustment) {
+        window.adjustPoints = async function(userId, adjustment) {
+            if (!idToken) return;
+
             try {
-                // First get current points
-                const userResponse = await fetch(`${API_BASE}/user/${userId}`);
+                const userResponse = await fetch(`${API_BASE}/user/${userId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${idToken}`
+                    }
+                });
                 const userData = await userResponse.json();
-                const newPoints = Math.max(0, userData.points + adjustment);
 
-                // Update points using buy endpoint with 0 or negative cost
-                // If adding points, use negative cost. If removing, use positive cost.
                 const response = await fetch(`${API_BASE}/buy`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`
                     },
                     body: JSON.stringify({
                         user_id: userId,
                         item_name: 'ADMIN_ADJUSTMENT',
-                        cost: -adjustment  // Negative cost adds points, positive removes
+                        cost: -adjustment
                     })
                 });
 
                 if (response.ok) {
-                    // Reload admin panel to show updated points
                     setTimeout(() => loadAdminPanel(), 300);
                 } else {
                     const data = await response.json();
@@ -605,14 +626,17 @@
                 console.error('Error adjusting points:', error);
                 alert('Connection error');
             }
-        }
+        };
 
-        async function adminDispense(slotName) {
+        window.adminDispense = async function(slotName) {
+            if (!idToken) return;
+
             try {
                 const response = await fetch(`${API_BASE}/buy`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`
                     },
                     body: JSON.stringify({
                         user_id: 'ADMIN',
@@ -631,45 +655,7 @@
             } catch (error) {
                 showMessage('adminDispenseMessage', 'Connection error', true);
             }
-        }
-
-        async function createNewUser() {
-            const newUserId = document.getElementById('newUserId').value.trim();
-            
-            if (!newUserId) {
-                showMessage('createUserMessage', 'Please enter a user ID', true);
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE}/user/create`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: newUserId })
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    showMessage('createUserMessage', `User ${newUserId} created!`);
-                    document.getElementById('newUserId').value = '';
-                    setTimeout(() => loadAdminPanel(), 1000);
-                } else {
-                    showMessage('createUserMessage', data.error || 'Failed to create user', true);
-                }
-            } catch (error) {
-                showMessage('createUserMessage', 'Connection error', true);
-            }
-        }
-
-        // Allow Enter key for inputs
-        document.getElementById('userId').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') enterUser();
-        });
-
-        document.getElementById('adminPassword').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') adminLogin();
-        });
+        };
     </script>
 </body>
 </html>
