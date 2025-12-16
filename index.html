@@ -353,6 +353,23 @@
             flex-direction: column;
             gap: 15px;
         }
+
+        .warning-box {
+            background: #ffe66d;
+            color: #0a0e27;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 7px;
+            line-height: 1.5;
+            border: 3px solid #ffdb4d;
+        }
+
+        .warning-title {
+            font-size: 9px;
+            margin-bottom: 8px;
+            color: #ff6b6b;
+        }
     </style>
 </head>
 <body>
@@ -361,6 +378,18 @@
             <!-- Login Screen -->
             <div id="loginScreen">
                 <h1 class="title">VendoMatic 3000</h1>
+                
+                <div class="warning-box">
+                    <div class="warning-title">⚠️ Setup Required</div>
+                    This app needs to run in a normal browser environment (not Claude Artifacts) because Firebase requires browser storage APIs.
+                    <br><br>
+                    <strong>To use this app:</strong><br>
+                    1. Copy this HTML file<br>
+                    2. Save as "index.html"<br>
+                    3. Open in your browser<br>
+                    OR deploy to Firebase Hosting / GitHub Pages
+                </div>
+
                 <div class="login-container">
                     <button class="button google" onclick="signInWithGoogle()">
                         <svg width="18" height="18" viewBox="0 0 18 18">
@@ -439,17 +468,15 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-        // TODO: Replace with your Firebase config
-  const firebaseConfig = {
-    apiKey: "AIzaSyAc092YhusGKgqVnlUDGp6Cs-ShQteVZ1o",
-    authDomain: "lueken-s-vending-machine.firebaseapp.com",
-    projectId: "lueken-s-vending-machine",
-    storageBucket: "lueken-s-vending-machine.firebasestorage.app",
-    messagingSenderId: "252754856690",
-    appId: "1:252754856690:web:320e7a25c6f935588f5e6b",
-    measurementId: "G-KKN4C9V93Y"
-  };
-
+        const firebaseConfig = {
+            apiKey: "AIzaSyAc092YhusGKgqVnlUDGp6Cs-ShQteVZ1o",
+            authDomain: "lueken-s-vending-machine.firebaseapp.com",
+            projectId: "lueken-s-vending-machine",
+            storageBucket: "lueken-s-vending-machine.firebasestorage.app",
+            messagingSenderId: "252754856690",
+            appId: "1:252754856690:web:320e7a25c6f935588f5e6b",
+            measurementId: "G-KKN4C9V93Y"
+        };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -460,13 +487,28 @@
         let currentUserEmail = null;
         let idToken = null;
 
+        // In-memory session storage as fallback
+        const memoryStorage = {
+            data: {},
+            getItem: function(key) { return this.data[key] || null; },
+            setItem: function(key, value) { this.data[key] = value; },
+            removeItem: function(key) { delete this.data[key]; }
+        };
+
         window.signInWithGoogle = async function() {
             try {
+                provider.setCustomParameters({
+                    prompt: 'select_account'
+                });
+                
                 const result = await signInWithPopup(auth, provider);
                 const user = result.user;
                 idToken = await user.getIdToken();
                 
-                // Send token to backend
+                // Store in memory
+                memoryStorage.setItem('idToken', idToken);
+                memoryStorage.setItem('userEmail', user.email);
+                
                 const response = await fetch(`${API_BASE}/auth/google`, {
                     method: 'POST',
                     headers: {
@@ -493,7 +535,10 @@
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                showMessage('loginError', 'Login failed', true);
+                const errorMsg = error.code === 'auth/popup-blocked' 
+                    ? 'Popup blocked! Please allow popups for this site.'
+                    : error.message || 'Login failed. This app needs to run in a normal browser (not Claude Artifacts).';
+                showMessage('loginError', errorMsg, true);
             }
         };
 
@@ -503,19 +548,20 @@
                 currentUser = null;
                 currentUserEmail = null;
                 idToken = null;
+                memoryStorage.removeItem('idToken');
+                memoryStorage.removeItem('userEmail');
                 showScreen('loginScreen');
             } catch (error) {
                 console.error('Logout error:', error);
             }
         };
 
-        // Replace your current onAuthStateChanged with this:
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 try {
                     idToken = await user.getIdToken();
+                    memoryStorage.setItem('idToken', idToken);
                     
-                    // Send token to backend to get user data
                     const response = await fetch(`${API_BASE}/auth/google`, {
                         method: 'POST',
                         headers: {
@@ -538,7 +584,6 @@
                             showScreen('vendingScreen');
                         }
                     } else {
-                        // If backend fails, still show login screen
                         showScreen('loginScreen');
                     }
                 } catch (error) {
@@ -546,7 +591,6 @@
                     showScreen('loginScreen');
                 }
             } else {
-                // User is signed out
                 currentUser = null;
                 currentUserEmail = null;
                 idToken = null;
