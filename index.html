@@ -781,6 +781,7 @@
                     <div class="user-actions">
                         <button class="button small-button" onclick="adjustPoints('${escapeHtml(user.user_id)}', 10, this)">+10</button>
                         <button class="button danger small-button" onclick="adjustPoints('${escapeHtml(user.user_id)}', -10, this)">-10</button>
+                        <button class="button danger small-button" onclick="removeUser('${escapeHtml(user.user_id)}', '${escapeHtml(user.email || user.user_id)}', this)">Remove</button>
                     </div>
                 </div>
             `).join('');
@@ -866,6 +867,42 @@
                 showMessage('adminMessage', 'Connection error', true);
             } finally {
                 buttons.forEach(b => b.disabled = false);
+            }
+        };
+
+        window.removeUser = async function(userId, userEmail, buttonEl) {
+            if (!idToken) return;
+
+            if (!confirm(`Remove ${userEmail}?\n\nThis will permanently delete this user. This cannot be undone.`)) {
+                return;
+            }
+
+            const userItem = buttonEl?.closest('.user-item');
+            const buttons = userItem?.querySelectorAll('button') ?? [];
+            buttons.forEach(b => b.disabled = true);
+
+            try {
+                const response = await fetch(`${API_BASE}/users/${encodeURIComponent(userId)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${idToken}`
+                    }
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (response.ok) {
+                    adminUsers = adminUsers.filter(u => u.user_id !== userId);
+                    renderUserList();
+                    showMessage('adminMessage', `Removed ${userEmail}`);
+                } else {
+                    buttons.forEach(b => b.disabled = false);
+                    showMessage('adminMessage', data.error || 'Failed to remove user', true);
+                }
+            } catch (error) {
+                buttons.forEach(b => b.disabled = false);
+                console.error('Error removing user:', error);
+                showMessage('adminMessage', 'Connection error', true);
             }
         };
 
