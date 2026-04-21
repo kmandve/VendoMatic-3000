@@ -292,6 +292,23 @@
             font-size: 8px;
             width: auto;
         }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .user-points.flash,
+        .points-value.flash {
+            animation: pointsFlash 0.5s ease-out;
+        }
+
+        @keyframes pointsFlash {
+            0% { transform: scale(1); text-shadow: none; }
+            50% { transform: scale(1.2); text-shadow: 0 0 12px #4ecdc4; color: #fff; }
+            100% { transform: scale(1); text-shadow: none; }
+        }
         
         .error {
             background: #ff6b6b;
@@ -369,6 +386,61 @@
             font-size: 9px;
             margin-bottom: 8px;
             color: #ff6b6b;
+        }
+
+        .admin-toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .admin-toolbar input {
+            flex: 1;
+            padding: 10px;
+            font-size: 10px;
+        }
+
+        .sort-button {
+            padding: 10px 12px;
+            font-size: 8px;
+            width: auto;
+            white-space: nowrap;
+        }
+
+        .skeleton-item {
+            background: linear-gradient(145deg, #2d3561, #1a1f3a);
+            border: 2px solid #4a5683;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            height: 58px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .skeleton-item::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(78, 205, 196, 0.15) 50%,
+                transparent 100%
+            );
+            animation: shimmer 1.2s linear infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .empty-state {
+            color: #7b68ee;
+            font-size: 9px;
+            text-align: center;
+            padding: 20px;
         }
     </style>
 </head>
@@ -455,6 +527,11 @@
                 </div>
 
                 <label style="color: #ffe66d; font-size: 10px; display: block; margin-bottom: 10px;">User Management:</label>
+                <div class="admin-toolbar">
+                    <input type="text" id="userSearch" placeholder="Search by email..." oninput="renderUserList()">
+                    <button class="button secondary sort-button" id="sortButton" onclick="toggleSort()">Points ↓</button>
+                </div>
+                <div id="adminMessage"></div>
                 <div class="user-list" id="userList"></div>
                 <div class="button-group">
                     <button class="button secondary" onclick="signOut()">Logout</button>
@@ -615,6 +692,24 @@
         window.buyItem = async function(itemName, cost) {
             if (!currentUser || !idToken) return;
 
+            const pointsEl = document.getElementById('userPoints');
+            const prevText = pointsEl.textContent;
+            const prevPoints = parseInt(prevText, 10);
+            const slots = document.querySelectorAll('#vendingScreen .slot');
+
+            if (!Number.isNaN(prevPoints) && prevPoints < cost) {
+                showMessage('vendingMessage', 'Not enough points', true);
+                return;
+            }
+
+            if (!Number.isNaN(prevPoints)) {
+                pointsEl.textContent = prevPoints - cost;
+                pointsEl.classList.remove('flash');
+                void pointsEl.offsetWidth;
+                pointsEl.classList.add('flash');
+            }
+            slots.forEach(s => s.style.pointerEvents = 'none');
+
             try {
                 const response = await fetch(`${API_BASE}/buy`, {
                     method: 'POST',
@@ -629,22 +724,82 @@
                     })
                 });
 
-                const data = await response.json();
+                const data = await response.json().catch(() => ({}));
 
                 if (!response.ok) {
+                    pointsEl.textContent = prevText;
                     showMessage('vendingMessage', data.error || 'Purchase failed', true);
                     return;
                 }
 
-                document.getElementById('userPoints').textContent = data.new_points;
+                if (typeof data.new_points === 'number') {
+                    pointsEl.textContent = data.new_points;
+                }
                 showMessage('vendingMessage', `Dispensing ${itemName}...`);
             } catch (error) {
+                pointsEl.textContent = prevText;
                 showMessage('vendingMessage', 'Connection error', true);
+            } finally {
+                slots.forEach(s => s.style.pointerEvents = '');
             }
+        };
+
+        let adminUsers = [];
+        let sortMode = 'points_desc';
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        window.renderUserList = function() {
+            const query = (document.getElementById('userSearch')?.value || '').toLowerCase().trim();
+            const filtered = adminUsers.filter(u =>
+                !query || (u.email || '').toLowerCase().includes(query) || (u.user_id || '').toLowerCase().includes(query)
+            );
+
+            const sorted = [...filtered].sort((a, b) => {
+                if (sortMode === 'points_desc') return (b.points ?? 0) - (a.points ?? 0);
+                if (sortMode === 'points_asc') return (a.points ?? 0) - (b.points ?? 0);
+                if (sortMode === 'email_asc') return (a.email || '').localeCompare(b.email || '');
+                return 0;
+            });
+
+            const list = document.getElementById('userList');
+            if (sorted.length === 0) {
+                list.innerHTML = `<div class="empty-state">${adminUsers.length === 0 ? 'No users yet' : 'No matches'}</div>`;
+                return;
+            }
+
+            list.innerHTML = sorted.map(user => `
+                <div class="user-item" data-user-id="${escapeHtml(user.user_id)}">
+                    <div class="user-info">
+                        <div class="user-id">${escapeHtml(user.email || user.user_id)}</div>
+                        <div class="user-points">${user.points} pts</div>
+                    </div>
+                    <div class="user-actions">
+                        <button class="button small-button" onclick="adjustPoints('${escapeHtml(user.user_id)}', 10, this)">+10</button>
+                        <button class="button danger small-button" onclick="adjustPoints('${escapeHtml(user.user_id)}', -10, this)">-10</button>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        window.toggleSort = function() {
+            const order = ['points_desc', 'points_asc', 'email_asc'];
+            const labels = { points_desc: 'Points ↓', points_asc: 'Points ↑', email_asc: 'Email A–Z' };
+            sortMode = order[(order.indexOf(sortMode) + 1) % order.length];
+            document.getElementById('sortButton').textContent = labels[sortMode];
+            renderUserList();
         };
 
         window.loadAdminPanel = async function() {
             if (!idToken) return;
+
+            const list = document.getElementById('userList');
+            list.innerHTML = '<div class="skeleton-item"></div><div class="skeleton-item"></div><div class="skeleton-item"></div>';
+            showScreen('adminPanel');
 
             try {
                 const response = await fetch(`${API_BASE}/users`, {
@@ -652,39 +807,32 @@
                         'Authorization': `Bearer ${idToken}`
                     }
                 });
-                const users = await response.json();
-
-                const userListHtml = users.map(user => `
-                    <div class="user-item">
-                        <div class="user-info">
-                            <div class="user-id">${user.email || user.user_id}</div>
-                            <div class="user-points">${user.points} pts</div>
-                        </div>
-                        <div class="user-actions">
-                            <button class="button small-button" onclick="adjustPoints('${user.user_id}', 10)">+10</button>
-                            <button class="button danger small-button" onclick="adjustPoints('${user.user_id}', -10)">-10</button>
-                        </div>
-                    </div>
-                `).join('');
-
-                document.getElementById('userList').innerHTML = userListHtml;
-                showScreen('adminPanel');
+                adminUsers = await response.json();
+                renderUserList();
             } catch (error) {
-                showMessage('loginError', 'Failed to load admin panel', true);
+                list.innerHTML = '';
+                showMessage('adminMessage', 'Failed to load users', true);
             }
         };
 
-        window.adjustPoints = async function(userId, adjustment) {
+        window.adjustPoints = async function(userId, adjustment, buttonEl) {
             if (!idToken) return;
 
-            try {
-                const userResponse = await fetch(`${API_BASE}/user/${userId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${idToken}`
-                    }
-                });
-                const userData = await userResponse.json();
+            const userItem = buttonEl?.closest('.user-item');
+            const pointsEl = userItem?.querySelector('.user-points');
+            const buttons = userItem?.querySelectorAll('button') ?? [];
+            const prevText = pointsEl?.textContent ?? '';
+            const prevPoints = parseInt(prevText, 10);
 
+            if (pointsEl && !Number.isNaN(prevPoints)) {
+                pointsEl.textContent = `${prevPoints + adjustment} pts`;
+                pointsEl.classList.remove('flash');
+                void pointsEl.offsetWidth;
+                pointsEl.classList.add('flash');
+            }
+            buttons.forEach(b => b.disabled = true);
+
+            try {
                 const response = await fetch(`${API_BASE}/buy`, {
                     method: 'POST',
                     headers: {
@@ -698,15 +846,26 @@
                     })
                 });
 
+                const data = await response.json().catch(() => ({}));
+
                 if (response.ok) {
-                    setTimeout(() => loadAdminPanel(), 300);
+                    if (pointsEl && typeof data.new_points === 'number') {
+                        pointsEl.textContent = `${data.new_points} pts`;
+                    }
+                    const idx = adminUsers.findIndex(u => u.user_id === userId);
+                    if (idx !== -1 && typeof data.new_points === 'number') {
+                        adminUsers[idx].points = data.new_points;
+                    }
                 } else {
-                    const data = await response.json();
-                    alert(`Error: ${data.error || 'Failed to adjust points'}`);
+                    if (pointsEl) pointsEl.textContent = prevText;
+                    showMessage('adminMessage', data.error || 'Failed to adjust points', true);
                 }
             } catch (error) {
+                if (pointsEl) pointsEl.textContent = prevText;
                 console.error('Error adjusting points:', error);
-                alert('Connection error');
+                showMessage('adminMessage', 'Connection error', true);
+            } finally {
+                buttons.forEach(b => b.disabled = false);
             }
         };
 
