@@ -234,7 +234,7 @@ window.renderUserList = function() {
             <div class="user-item" data-user-id="${id}">
                 <div class="user-info">
                     <div class="user-id" title="${label}">${label}</div>
-                    <div class="user-points">${user.points} pts</div>
+                    <div class="user-points editable" onclick="setPoints('${id}', this)" title="Click to set exact points">${user.points} pts</div>
                 </div>
                 <div class="user-actions">
                     <button class="button small-button" onclick="adjustPoints('${id}', 10, this)" title="Add 10 points">+10</button>
@@ -323,6 +323,65 @@ window.adjustPoints = async function(userId, adjustment, buttonEl) {
     } catch (error) {
         if (pointsEl) pointsEl.textContent = prevText;
         console.error('Error adjusting points:', error);
+        showMessage('adminMessage', 'Connection error', true);
+    } finally {
+        buttons.forEach(b => b.disabled = false);
+    }
+};
+
+window.setPoints = async function(userId, pointsEl) {
+    if (!idToken) return;
+
+    const user = adminUsers.find(u => u.user_id === userId);
+    if (!user) return;
+
+    const input = prompt(`Set points for ${user.email || userId}:`, String(user.points ?? 0));
+    if (input === null) return;
+
+    const trimmed = input.trim();
+    const value = Number(trimmed);
+    if (trimmed === '' || !Number.isInteger(value) || value < 0) {
+        showMessage('adminMessage', 'Enter a non-negative whole number', true);
+        return;
+    }
+
+    if (value === user.points) return;
+
+    const prevText = pointsEl.textContent;
+    pointsEl.textContent = `${value} pts`;
+    pointsEl.classList.remove('flash');
+    void pointsEl.offsetWidth;
+    pointsEl.classList.add('flash');
+
+    const userItem = pointsEl.closest('.user-item');
+    const buttons = userItem?.querySelectorAll('button') ?? [];
+    buttons.forEach(b => b.disabled = true);
+
+    try {
+        const response = await fetch(`${API_BASE}/users/${encodeURIComponent(userId)}/points`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+            },
+            body: JSON.stringify({ points: value })
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok) {
+            if (typeof data.new_points === 'number') {
+                pointsEl.textContent = `${data.new_points} pts`;
+                const idx = adminUsers.findIndex(u => u.user_id === userId);
+                if (idx !== -1) adminUsers[idx].points = data.new_points;
+            }
+        } else {
+            pointsEl.textContent = prevText;
+            showMessage('adminMessage', data.error || 'Failed to set points', true);
+        }
+    } catch (error) {
+        pointsEl.textContent = prevText;
+        console.error('Error setting points:', error);
         showMessage('adminMessage', 'Connection error', true);
     } finally {
         buttons.forEach(b => b.disabled = false);

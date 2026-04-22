@@ -285,6 +285,16 @@ input:focus {
     font-size: 12px;
 }
 
+.user-points.editable {
+    cursor: pointer;
+    transition: color 0.15s, text-shadow 0.15s;
+}
+
+.user-points.editable:hover {
+    color: #fff;
+    text-shadow: 0 0 8px #4ecdc4;
+}
+
 .user-actions {
     display: flex;
     gap: 4px;
